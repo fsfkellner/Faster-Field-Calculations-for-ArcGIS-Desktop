@@ -9,7 +9,7 @@ class Toolbox(object):
         self.alias = ""
 
         # List of tool classes associated with this toolbox
-        self.tools = [CalculateFields,JoinCalculateFields]
+        self.tools = [CalculateFields, JoinCalculateFields, CalculateConstantValue]
 
 
 class CalculateFields(object):
@@ -55,7 +55,13 @@ class CalculateFields(object):
         direction ="Input")
         param4.parameterDependencies = [param0.name]
 
-        params = [param0, param1, param2, param3, param4]
+        param5 = arcpy.Parameter(displayName = 'Field Calculate Output',
+        name = 'Field Calculate Output',
+        datatype = 'GPFeatureLayer',
+        parameterType ="Derived",
+        direction ="Output")
+
+        params = [param0, param1, param2, param3, param4, param5]
         return params
 
     def isLicensed(self):
@@ -88,11 +94,7 @@ class CalculateFields(object):
         for row in cursor:
             key = row[0]
             vals = row[1]
-            if key not in valueDi:
-                valueDi[key] = []
-                valueDi[key] = vals
-            else:
-                valueDi[key] = vals
+            valueDi[key] = vals
 
         cursor = arcpy.da.UpdateCursor(fc, [Uniqueid, Updatefield])
         for row in cursor: 
@@ -100,6 +102,10 @@ class CalculateFields(object):
                 continue
             row[1] = (valueDi[row[0]])
             cursor.updateRow(row)
+        
+        del(cursor)
+        del(row)
+        arcpy.ClearWorkspaceCache_management()
 
 class JoinCalculateFields(object):
     def __init__(self):
@@ -164,7 +170,13 @@ class JoinCalculateFields(object):
         direction ="Input")
         param17.parameterDependencies = [param14.name]
 
-        params = [param10, param11, param12, param13, param14, param15, param16, param17]
+        param18 = arcpy.Parameter(displayName = 'Field Calculate Output',
+        name = 'Field Calculate Output',
+        datatype = 'GPFeatureLayer',
+        parameterType ="Derived",
+        direction ="Output")
+
+        params = [param10, param11, param12, param13, param14, param15, param16, param17, param18]
         return params
 
     def isLicensed(self):
@@ -200,11 +212,7 @@ class JoinCalculateFields(object):
         for row in cursor:
             key = row[0]
             vals = row[1]
-            if key not in valueDi:
-                valueDi[key] = []
-                valueDi[key] = vals
-            else:
-                valueDi[key] = vals
+            valueDi[key] = vals
 
         cursor = arcpy.da.UpdateCursor(fc, [Uniqueid, Updatefield], fcquery)
         for row in cursor: 
@@ -212,3 +220,113 @@ class JoinCalculateFields(object):
                 continue
             row[1] = (valueDi[row[0]])
             cursor.updateRow(row)
+        
+        del(cursor)
+        del(row)
+        arcpy.ClearWorkspaceCache_management()
+
+class CalculateConstantValue(object):
+    def __init__(self):
+        """Define the tool (tool name is the name of the class)."""
+        self.label = "Calculate Constant Value into a Field in a Table"
+        self.description = ""
+        self.canRunInBackground = True
+
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        param20 = arcpy.Parameter(displayName = 'Target Feature Class or Table',
+        name = 'Feature Class',
+        datatype = 'GPTableView',
+        parameterType ="Required",
+        direction ="Input")
+        
+        param21 = arcpy.Parameter(displayName = 'Select the Field to Be Updated with the Constant Value',
+        name = 'Field to be Updated',
+        datatype = 'Field',
+        parameterType ="Required",
+        direction ="Input")
+        param21.parameterDependencies = [param20.name]
+
+        param22 = arcpy.Parameter(displayName = 'Constant Value to use in the Field Calcutation',
+        name = 'Constant Value to use in the Field Calcutation',
+        datatype = 'GPString',
+        parameterType ="Required",
+        direction ="Input")
+
+        param23 = arcpy.Parameter(displayName = "Constant Value's Data Type",
+        name = 'Data Type of the Constant Entered',
+        datatype = 'GPString',
+        parameterType ="Required",
+        direction ="Input")
+
+        param23.filter.list = ['Integer', 'Float', 'String']
+        
+        param24 = arcpy.Parameter(displayName = 'Optional SQL Query to Perform on the Table Before Field Calculation',
+        name = 'Update SQL Query',
+        datatype = 'GPSQLExpression',
+        parameterType ="Optional",
+        direction ="Input")
+
+        param25 = arcpy.Parameter(displayName = 'Field Calculate Output',
+        name = 'Field Calculate Output',
+        datatype = 'GPFeatureLayer',
+        parameterType ="Derived",
+        direction ="Output")
+
+        params = [param20, param21, param22, param23, param24, param25]
+        return params
+
+    def isLicensed(self):
+        """Set whether tool is licensed to execute."""
+        return True
+
+    def updateParameters(self, parameters):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+        return
+        
+
+    def updateMessages(self, parameters):
+        """Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation."""
+        return
+
+    def execute(self, parameters, messages):
+        """The source code of the tool."""
+        fc = parameters[0].valueAsText
+        Updatefield = parameters[1].valueAsText
+        constant = parameters[2].valueAsText
+        Dtype = parameters[3].valueAsText
+        fcquery = parameters[4].valueAsText
+
+        if Dtype == 'String':
+            pass
+        elif Dtype == 'Float':
+            try:
+                constant = float(constant)
+            except:
+                arcpy.AddError('Your data type and field type are not compatable')
+                exit()
+        elif Dtype == 'Integer':
+            try:
+                constant = int(constant)
+            except:
+                arcpy.AddError('Your data type and field type are not compatable')
+                exit()
+        elif Dtype == 'Null':
+            try:
+                constant = None
+            except:
+                arcpy.AddError('Your data type and field type are not compatable')
+                exit()
+
+
+        cursor = arcpy.da.UpdateCursor(fc,  Updatefield, fcquery)
+        for row in cursor: 
+            row[0] = constant
+            cursor.updateRow(row)
+        
+        del(cursor)
+        del(row)
+        arcpy.ClearWorkspaceCache_management()
